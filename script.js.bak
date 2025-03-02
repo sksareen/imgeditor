@@ -48,6 +48,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let initialWidth, initialHeight;
     let currentAspectRatio = { width: 1, height: 1 }; // Default to square
     let isDarkMode = true;
+    let isCollisionEnabled = true; // Default to collision detection enabled
+    
+    // Add touch event support for better mobile experience
+    let initialTouchDistance = 0;
+    let initialScale = 1;
     
     // Default template images - add your own template URLs here
     const templates = [
@@ -66,12 +71,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize with default aspect ratio (1:1)
     updateCanvasAspectRatio('1:1');
     
+    // Ensure the canvas is sized correctly on page load
+    updateCanvasSize();
+    
+    // Add click handler for collision toggle
+    const collisionStatus = document.getElementById('collision-status');
+    if (collisionStatus) {
+        collisionStatus.addEventListener('click', toggleCollision);
+        collisionStatus.style.cursor = 'pointer';
+        // Initialize collision status display
+        updateCollisionStatus();
+    }
+    
     // Event listeners
     canvas.addEventListener('dragover', handleDragOver);
     canvas.addEventListener('drop', handleDrop);
     canvas.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    
+    // Add window resize event listener with debounce
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        // Clear the timeout if it exists
+        if (resizeTimeout) {
+            clearTimeout(resizeTimeout);
+        }
+        
+        // Set a new timeout
+        resizeTimeout = setTimeout(function() {
+            updateCanvasSize();
+            
+            // If there are images or texts on the canvas, rearrange them to fit the new size
+            if (images.length > 0 || texts.length > 0) {
+                arrangeImagesOptimally();
+            }
+        }, 200); // 200ms debounce
+    });
+    
+    // Add orientation change handler for mobile devices
+    window.addEventListener('orientationchange', function() {
+        // Show loading indicator during orientation change
+        showLoading("Adjusting layout...");
+        
+        // Need a longer delay for orientation changes as they take time to complete
+        setTimeout(function() {
+            updateCanvasSize();
+            
+            if (images.length > 0 || texts.length > 0) {
+                arrangeImagesOptimally();
+            }
+            
+            hideLoading();
+        }, 500);
+    });
+    
+    // Add touch event support for better mobile experience
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
     
     // New button event listeners
     resetBtn.addEventListener('click', resetCanvas);
@@ -104,12 +162,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 deleteSelectedText();
                 e.preventDefault();
             }
-        }
-        
-        // Toggle dark mode with Cmd+I (macOS) or Ctrl+I (Windows/Linux)
-        if ((e.key === 'i' || e.key === 'I') && (e.metaKey || e.ctrlKey)) {
-            toggleDarkMode();
-            e.preventDefault();  // Prevent default browser behavior
         }
     });
     
@@ -191,37 +243,32 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             images.push(newImage);
+            
+            // Add default top and bottom text for meme templates
+            texts = [
+                {
+                    content: 'TOP TEXT',
+                    x: canvasWidth / 2 - 150,
+                    y: 20,
+                    fontSize: 36,
+                    color: '#ffffff'
+                },
+                {
+                    content: 'BOTTOM TEXT',
+                    x: canvasWidth / 2 - 150,
+                    y: canvasHeight - 70,
+                    fontSize: 36,
+                    color: '#ffffff'
+                }
+            ];
+            
             saveState();
-            hideDropZone();
             updateUI();
+            hideDropZone();
         };
         
         img.src = src;
-        showLoading("Loading template...");
     }
-    
-    // Handle responsive canvas sizing based on device
-    function getOptimalCanvasSize() {
-        const screenWidth = window.innerWidth;
-        let maxWidth, maxHeight;
-        
-        if (screenWidth <= 320) {
-            maxWidth = maxHeight = 280; // Small phones
-        } else if (screenWidth <= 480) {
-            maxWidth = maxHeight = 380; // Medium phones
-        } else if (screenWidth <= 768) {
-            maxWidth = maxHeight = 500; // Tablets
-        } else {
-            maxWidth = maxHeight = 600; // Desktop
-        }
-        
-        return { maxWidth, maxHeight };
-    }
-    
-    // Update the canvas size on window resize
-    window.addEventListener('resize', function() {
-        updateCanvasSize();
-    });
     
     // Helper functions
     function handleDragOver(e) {
@@ -920,73 +967,278 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateCanvasAspectRatio(ratio) {
         let width, height;
         
-        switch (ratio) {
-            case '16:9':
-                width = 16;
-                height = 9;
-                break;
-            case '4:3':
-                width = 4;
-                height = 3;
-                break;
-            case '9:16':
-                width = 9;
-                height = 16;
-                break;
-            default: // 1:1 square
-                width = 1;
+        // Handle both string (e.g., "16:9") and numeric (e.g., 1.78) ratio formats
+        if (typeof ratio === 'string') {
+            if (ratio.includes(':')) {
+                // Split "16:9" format into numbers
+                const parts = ratio.split(':');
+                width = parseFloat(parts[0]);
+                height = parseFloat(parts[1]);
+            } else {
+                // Handle direct number as string, e.g., "1"
+                const numericRatio = parseFloat(ratio);
+                if (numericRatio === 1) {
+                    width = height = 1; // Square
+                } else if (numericRatio > 1) {
+                    // Landscape
+                    width = numericRatio;
+                    height = 1;
+                } else {
+                    // Portrait
+                    width = 1;
+                    height = 1 / numericRatio;
+                }
+            }
+        } else if (typeof ratio === 'number') {
+            // Handle direct number input
+            if (ratio === 1) {
+                width = height = 1; // Square
+            } else if (ratio > 1) {
+                // Landscape
+                width = ratio;
                 height = 1;
-                break;
+            } else {
+                // Portrait
+                width = 1;
+                height = 1 / ratio;
+            }
+        } else {
+            // Default to square if invalid input
+            width = height = 1;
         }
         
+        // Store the aspect ratio for use in other functions
         currentAspectRatio = { width, height };
-        updateCanvasSize();
+        
+        // Update aspect ratio dropdown if it exists
+        const aspectRatioSelect = document.getElementById('aspect-ratio');
+        if (aspectRatioSelect) {
+            // Find the option that most closely matches our ratio
+            const numericRatio = width / height;
+            let closestOption = null;
+            let smallestDiff = Infinity;
+            
+            // Check each option to find closest match
+            Array.from(aspectRatioSelect.options).forEach(option => {
+                const optionValue = parseFloat(option.value);
+                if (!isNaN(optionValue)) {
+                    const diff = Math.abs(optionValue - numericRatio);
+                    if (diff < smallestDiff) {
+                        smallestDiff = diff;
+                        closestOption = option.value;
+                    }
+                }
+            });
+            
+            if (closestOption !== null) {
+                aspectRatioSelect.value = closestOption;
+            }
+        }
+        
+        // Update aspect ratio toggles if they exist
+        const aspectRatioToggles = document.querySelectorAll('.aspect-toggle');
+        aspectRatioToggles.forEach(toggle => {
+            const toggleRatio = toggle.dataset.ratio;
+            let toggleMatch = false;
+            
+            if (toggleRatio && toggleRatio.includes(':')) {
+                const parts = toggleRatio.split(':');
+                const toggleWidth = parseFloat(parts[0]);
+                const toggleHeight = parseFloat(parts[1]);
+                
+                // Check if this toggle matches our current ratio (with small margin for floating point)
+                if (Math.abs((toggleWidth / toggleHeight) - (width / height)) < 0.01) {
+                    toggleMatch = true;
+                }
+            }
+            
+            // Update active state
+            toggle.classList.toggle('active', toggleMatch);
+        });
+        
+        // Resize the canvas with the new aspect ratio
+        const dimensions = updateCanvasSize();
+        
+        // Log the actual dimensions for debugging
+        console.log(`Canvas resized to ${dimensions.width} x ${dimensions.height} (aspect ratio: ${width}:${height})`);
         
         // Update image and text positions to fit new canvas size
         if (images.length > 0 || texts.length > 0) {
             arrangeImagesOptimally();
         }
+        
+        // Return dimensions
+        return dimensions;
     }
     
+    // Add unified dimension constants at the top level
+    const CANVAS_DIMENSIONS = {
+        // Maximum dimensions (should match CSS)
+        MAX_WIDTH: 800,
+        MAX_HEIGHT: 800,
+        
+        // Target size for square (1:1) aspect ratio
+        SQUARE_SIZE: 625,
+        
+        // Device breakpoints (should match CSS media queries)
+        BREAKPOINTS: {
+            SMALL_MOBILE: 350,
+            MOBILE: 480,
+            TABLET: 768,
+            DESKTOP: 1024,
+            LARGE_DESKTOP: 1200
+        },
+        
+        // Minimum dimensions for different devices
+        MIN_DIMENSIONS: {
+            SMALL_MOBILE: 250,
+            MOBILE: 280,
+            TABLET: 350,
+            DESKTOP: 400
+        }
+    };
+
+    // Replace the updateCanvasSize function with this improved version
     function updateCanvasSize() {
         const ratio = currentAspectRatio.width / currentAspectRatio.height;
-        const { maxWidth, maxHeight } = getOptimalCanvasSize();
         
-        // Canvas dimensions element
-        const canvasDimensions = document.getElementById('canvas-dimensions');
+        // Determine device type using the same breakpoints as our CSS
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const isLandscape = windowWidth > windowHeight;
         
-        if (ratio >= 1) {
-            // Landscape or square
-            const width = Math.min(maxWidth, 800);
-            const height = Math.round(width / ratio);
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            canvasDimensions.textContent = `${width} x ${height}`;
+        // Use matchMedia for consistent breakpoint detection with CSS
+        const isSmallMobile = window.matchMedia(`(max-width: ${CANVAS_DIMENSIONS.BREAKPOINTS.SMALL_MOBILE}px)`).matches;
+        const isMobile = window.matchMedia(`(max-width: ${CANVAS_DIMENSIONS.BREAKPOINTS.MOBILE}px)`).matches;
+        const isTablet = window.matchMedia(`(max-width: ${CANVAS_DIMENSIONS.BREAKPOINTS.TABLET}px)`).matches && !isMobile;
+        const isLargeDesktop = window.matchMedia(`(min-width: ${CANVAS_DIMENSIONS.BREAKPOINTS.LARGE_DESKTOP}px)`).matches;
+        
+        // Get the canvas container's available width
+        const container = canvas.closest('.canvas-container');
+        const availableWidth = container ? container.clientWidth : windowWidth;
+        
+        // Calculate appropriate percentage of available width based on device
+        let widthPercentage, heightPercentage;
+        if (isSmallMobile) {
+            widthPercentage = 0.92;
+            heightPercentage = isLandscape ? 0.7 : 0.55;
+        } else if (isMobile) {
+            widthPercentage = 0.85;
+            heightPercentage = isLandscape ? 0.75 : 0.65;
+        } else if (isTablet) {
+            widthPercentage = 0.8;
+            heightPercentage = 0.7;
+        } else if (isLargeDesktop) {
+            widthPercentage = 0.65;
+            heightPercentage = 0.75;
         } else {
-            // Portrait
-            const height = Math.min(maxHeight, 800);
-            const width = Math.round(height * ratio);
-            canvas.style.height = `${height}px`;
-            canvas.style.width = `${width}px`;
-            canvasDimensions.textContent = `${width} x ${height}`;
+            // Standard desktop
+            widthPercentage = 0.7;
+            heightPercentage = 0.7;
         }
         
-        // For mobile devices with touch events, add additional optimizations
-        if ('ontouchstart' in window) {
-            // Make text slightly larger for better mobile readability
-            texts.forEach(text => {
-                if (text.fontSize < 28) {
-                    text.fontSize = 28;
-                }
-            });
-            
-            // Make resize handles larger for touch targets
-            const resizeHandles = document.querySelectorAll('.resize-handle');
-            resizeHandles.forEach(handle => {
-                handle.style.width = '24px';
-                handle.style.height = '24px';
-            });
+        // Set appropriate minimum dimensions based on device
+        const minSize = isSmallMobile ? CANVAS_DIMENSIONS.MIN_DIMENSIONS.SMALL_MOBILE : 
+                      isMobile ? CANVAS_DIMENSIONS.MIN_DIMENSIONS.MOBILE : 
+                      isTablet ? CANVAS_DIMENSIONS.MIN_DIMENSIONS.TABLET : 
+                      CANVAS_DIMENSIONS.MIN_DIMENSIONS.DESKTOP;
+        
+        // Maximum dimensions should match our CSS constraints
+        // For mobile/tablet, use values from media queries
+        let maxWidth, maxHeight;
+        if (isSmallMobile) {
+            maxWidth = maxHeight = 300; // From CSS @media max-width: 350px
+        } else if (isMobile) {
+            maxWidth = maxHeight = 400; // From CSS @media max-width: 480px
+        } else if (isTablet) {
+            maxWidth = maxHeight = 600; // From CSS @media max-width: 768px
+        } else if (isLargeDesktop) {
+            maxWidth = maxHeight = CANVAS_DIMENSIONS.MAX_WIDTH; // 800px by default
+        } else {
+            maxWidth = maxHeight = CANVAS_DIMENSIONS.MAX_WIDTH; // 800px by default
         }
+        
+        // Calculate target width and height based on available space
+        let targetWidth = Math.min(availableWidth * widthPercentage, maxWidth);
+        let targetHeight = Math.min(windowHeight * heightPercentage, maxHeight);
+        
+        // Handle square aspect ratio (1:1) specially and consistently
+        if (Math.abs(ratio - 1) < 0.01) { // Using a small epsilon for floating point comparison
+            // For square aspect ratio, use our target square size if it fits
+            const squareSize = Math.min(targetWidth, targetHeight);
+            
+            // Check if our preferred square size (625px) would fit
+            if (CANVAS_DIMENSIONS.SQUARE_SIZE <= squareSize && CANVAS_DIMENSIONS.SQUARE_SIZE <= maxWidth) {
+                targetWidth = targetHeight = CANVAS_DIMENSIONS.SQUARE_SIZE;
+            } else {
+                // Otherwise use the maximum square that fits
+                targetWidth = targetHeight = squareSize;
+            }
+        } else {
+            // For non-square aspect ratios, calculate dimensions while preserving ratio
+            if (ratio > 1) {
+                // Landscape orientation
+                targetHeight = Math.min(targetHeight, targetWidth / ratio);
+                targetWidth = targetHeight * ratio;
+            } else {
+                // Portrait orientation
+                targetWidth = Math.min(targetWidth, targetHeight * ratio);
+                targetHeight = targetWidth / ratio;
+            }
+            
+            // Ensure dimensions don't exceed max width/height
+            if (targetWidth > maxWidth) {
+                targetWidth = maxWidth;
+                targetHeight = targetWidth / ratio;
+            }
+            if (targetHeight > maxHeight) {
+                targetHeight = maxHeight;
+                targetWidth = targetHeight * ratio;
+            }
+            
+            // Enforce minimum dimensions while preserving aspect ratio
+            if (targetWidth < minSize) {
+                targetWidth = minSize;
+                targetHeight = targetWidth / ratio;
+            }
+            if (targetHeight < minSize) {
+                targetHeight = minSize;
+                targetWidth = targetHeight * ratio;
+            }
+        }
+        
+        // Round dimensions to prevent sub-pixel rendering issues
+        // Always round to even numbers for better pixel rendering
+        const finalWidth = Math.round(targetWidth);
+        const finalHeight = Math.round(targetHeight);
+        const evenWidth = finalWidth % 2 !== 0 ? finalWidth - 1 : finalWidth;
+        const evenHeight = finalHeight % 2 !== 0 ? finalHeight - 1 : finalHeight;
+        
+        // Apply dimensions to the canvas
+        canvas.style.width = `${evenWidth}px`;
+        canvas.style.height = `${evenHeight}px`;
+        
+        // Update canvas dimensions display with accurate values
+        const canvasDimensions = document.getElementById('canvas-dimensions');
+        if (canvasDimensions) {
+            canvasDimensions.textContent = `${evenWidth} x ${evenHeight}`;
+        }
+        
+        // Apply appropriate CSS classes based on device type
+        canvas.classList.remove('mobile-view', 'tablet-view', 'desktop-view');
+        if (isMobile) {
+            canvas.classList.add('mobile-view');
+        } else if (isTablet) {
+            canvas.classList.add('tablet-view');
+        } else {
+            canvas.classList.add('desktop-view');
+        }
+        
+        // Return the actual dimensions for any functions that need them
+        return {
+            width: evenWidth,
+            height: evenHeight
+        };
     }
     
     // Optimal arrangement of images
@@ -995,6 +1247,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const canvasWidth = canvas.clientWidth;
         const canvasHeight = canvas.clientHeight;
+        
+        // Ensure the canvas dimensions are displayed correctly
+        const canvasDimensions = document.getElementById('canvas-dimensions');
+        if (canvasDimensions) {
+            canvasDimensions.textContent = `${canvasWidth} x ${canvasHeight}`;
+        }
         
         // Use a dynamic padding that scales with the number of images
         // Fewer images = more padding, more images = less padding (min 5px)
@@ -1173,9 +1431,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Balance between count and area (80% count, 20% area) for more consistent sizing
             const ratio = (countRatio * 0.8) + (areaRatio * 0.2);
             
-            // Decide whether to split horizontally or vertically
-            let group1Results, group2Results;
-            
             // Calculate weighted average aspect ratios for each group
             let group1AspectRatio = 0;
             let group2AspectRatio = 0;
@@ -1190,21 +1445,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 group2AspectRatio += (img.width / img.height) * weight;
             });
             
-            // Determine split direction with improved heuristic
-            // Taking into account:
-            // 1. How well aspect ratios fit into the proposed spaces
-            // 2. Minimizing wasted space
-            // 3. The container shape
-            const containerAspect = width / height;
-            
             // Calculate scores for both directions with improved weights for better fitting
             const horizontalFit = Math.abs(group1AspectRatio - (width * ratio) / height) + 
-                                Math.abs(group2AspectRatio - (width * (1-ratio)) / height);
+                                Math.abs(group2AspectRatio - (width * (1-ratio)) / height));
             
             const verticalFit = Math.abs(group1AspectRatio - width / (height * ratio)) + 
                               Math.abs(group2AspectRatio - width / (height * (1-ratio)));
             
             // Add a bias based on container shape to avoid thin slices
+            const containerAspect = width / height;
+            
+            // Calculate scores for both directions with improved weights for better fitting
             const horizontalScore = horizontalFit * (containerAspect < 1 ? 1.1 : 0.9);
             const verticalScore = verticalFit * (containerAspect > 1 ? 1.1 : 0.9);
             
@@ -1340,8 +1591,8 @@ document.addEventListener('DOMContentLoaded', function() {
         function resolveCollisions(imageArray) {
             const collisionPadding = padding / 2; // Minimum space between images
             let collisionsResolved = false;
+            const maxIterations = 10; // Prevent infinite loops
             let iterations = 0;
-            const maxIterations = 5; // Limit iterations to prevent infinite loops
             
             // Loop until no more collisions are found or max iterations reached
             while (!collisionsResolved && iterations < maxIterations) {
@@ -1351,56 +1602,68 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check each pair of images for collisions
                 for (let i = 0; i < imageArray.length; i++) {
                     const img1 = imageArray[i];
+                    
+                    // Calculate the rectangle for this image
                     const rect1 = {
                         left: img1.x,
-                        top: img1.y,
                         right: img1.x + (img1.width * img1.scaleFactor),
+                        top: img1.y,
                         bottom: img1.y + (img1.height * img1.scaleFactor)
                     };
                     
                     for (let j = i + 1; j < imageArray.length; j++) {
                         const img2 = imageArray[j];
+                        
+                        // Calculate the rectangle for the other image
                         const rect2 = {
                             left: img2.x,
-                            top: img2.y,
                             right: img2.x + (img2.width * img2.scaleFactor),
+                            top: img2.y,
                             bottom: img2.y + (img2.height * img2.scaleFactor)
                         };
                         
-                        // Check if rectangles overlap
-                        if (rect1.left < rect2.right + collisionPadding && 
-                            rect1.right + collisionPadding > rect2.left && 
-                            rect1.top < rect2.bottom + collisionPadding && 
+                        // Check if the rectangles overlap
+                        if (rect1.left < rect2.right + collisionPadding &&
+                            rect1.right + collisionPadding > rect2.left &&
+                            rect1.top < rect2.bottom + collisionPadding &&
                             rect1.bottom + collisionPadding > rect2.top) {
                             
+                            // We have a collision, so we need to resolve it
                             collisionsResolved = false;
                             
-                            // Calculate overlap in each direction
+                            // Calculate overlaps in each direction
                             const overlapLeft = rect2.right + collisionPadding - rect1.left;
                             const overlapRight = rect1.right + collisionPadding - rect2.left;
                             const overlapTop = rect2.bottom + collisionPadding - rect1.top;
                             const overlapBottom = rect1.bottom + collisionPadding - rect2.top;
                             
-                            // Find the smallest overlap
+                            // Find the smallest overlap to resolve (minimum translation distance)
                             const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
                             
-                            // Apply a small adjustment factor to avoid images touching directly
-                            const adjustFactor = 1.1;
+                            // Apply the smallest displacement for least disruptive motion
+                            // Also consider importance of images when resolving collisions
+                            const importance1 = img1.importance || 1;
+                            const importance2 = img2.importance || 1;
+                            const ratio1 = importance2 / (importance1 + importance2); // More important = less displacement
+                            const ratio2 = importance1 / (importance1 + importance2);
                             
-                            // Move the images apart in the direction of least overlap
                             if (minOverlap === overlapLeft) {
-                                img1.x += overlapLeft * adjustFactor;
+                                img1.x -= overlapLeft * ratio1;
+                                img2.x += overlapLeft * ratio2;
                             } else if (minOverlap === overlapRight) {
-                                img1.x -= overlapRight * adjustFactor;
+                                img1.x += overlapRight * ratio1;
+                                img2.x -= overlapRight * ratio2;
                             } else if (minOverlap === overlapTop) {
-                                img1.y += overlapTop * adjustFactor;
-                            } else {
-                                img1.y -= overlapBottom * adjustFactor;
+                                img1.y -= overlapTop * ratio1;
+                                img2.y += overlapTop * ratio2;
+                            } else { // overlapBottom
+                                img1.y += overlapBottom * ratio1;
+                                img2.y -= overlapBottom * ratio2;
                             }
                             
-                            // Ensure the image stays within canvas bounds
-                            img1.x = Math.max(padding, Math.min(img1.x, canvasWidth - (img1.width * img1.scaleFactor) - padding));
-                            img1.y = Math.max(padding, Math.min(img1.y, canvasHeight - (img1.height * img1.scaleFactor) - padding));
+                            // Keep images within canvas bounds
+                            keepImageInBounds(img1);
+                            keepImageInBounds(img2);
                         }
                     }
                 }
@@ -1408,42 +1671,63 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // If we've hit max iterations but still have collisions, try reducing image sizes
             if (!collisionsResolved) {
-                // Reduce all image sizes slightly to create more space
+                // Apply a small scale reduction to all images
+                // This ensures a solution when space is very limited
                 imageArray.forEach(img => {
-                    img.scaleFactor *= 0.95; // Reduce size by 5%
+                    img.scaleFactor *= 0.95; // Reduce by 5%
+                    keepImageInBounds(img);
                 });
-                
-                // Try to center images in their relative positions
-                centerImages(imageArray);
+            }
+            
+            // Update collision status display
+            updateCollisionStatus(!collisionsResolved);
+        }
+        
+        // Function to toggle collision detection
+        function toggleCollision() {
+            isCollisionEnabled = !isCollisionEnabled;
+            updateCollisionStatus();
+            
+            // If toggling on, immediately apply collision resolution
+            if (isCollisionEnabled && (images.length > 1)) {
+                resolveCollisions(images);
+                updateUI();
+            }
+            
+            saveState();
+        }
+        
+        // Function to update the collision status display
+        function updateCollisionStatus(hasCollisions = false) {
+            const collisionStatus = document.getElementById('collision-status');
+            if (!collisionStatus) return;
+            
+            if (isCollisionEnabled) {
+                collisionStatus.textContent = hasCollisions ? "Collision: DETECTED" : "Collision: ON";
+                collisionStatus.className = hasCollisions ? "active warning" : "active";
+            } else {
+                collisionStatus.textContent = "Collision: OFF";
+                collisionStatus.className = "";
             }
         }
         
-        // Helper function to center all images in the canvas
-        function centerImages(imageArray) {
-            // Find the bounds of all images
-            let minX = canvasWidth, minY = canvasHeight;
-            let maxX = 0, maxY = 0;
+        // Helper function to keep an image within canvas bounds
+        function keepImageInBounds(img) {
+            const canvasWidth = canvas.clientWidth;
+            const canvasHeight = canvas.clientHeight;
+            const imgWidth = img.width * img.scaleFactor;
+            const imgHeight = img.height * img.scaleFactor;
             
-            imageArray.forEach(img => {
-                minX = Math.min(minX, img.x);
-                minY = Math.min(minY, img.y);
-                maxX = Math.max(maxX, img.x + (img.width * img.scaleFactor));
-                maxY = Math.max(maxY, img.y + (img.height * img.scaleFactor));
-            });
+            // Ensure at least 25% of the image is visible on each edge
+            const minVisiblePart = 0.25;
             
-            // Calculate the current group width and height
-            const groupWidth = maxX - minX;
-            const groupHeight = maxY - minY;
+            // Constrain x position
+            img.x = Math.max(-(imgWidth * (1 - minVisiblePart)), 
+                             Math.min(img.x, canvasWidth - (imgWidth * minVisiblePart)));
             
-            // Calculate the offset to center the group
-            const offsetX = (canvasWidth - groupWidth) / 2 - minX;
-            const offsetY = (canvasHeight - groupHeight) / 2 - minY;
-            
-            // Apply offset to all images
-            imageArray.forEach(img => {
-                img.x += offsetX;
-                img.y += offsetY;
-            });
+            // Constrain y position
+            img.y = Math.max(-(imgHeight * (1 - minVisiblePart)), 
+                             Math.min(img.y, canvasHeight - (imgHeight * minVisiblePart)));
         }
     }
     
@@ -1456,4 +1740,313 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return newArray;
     }
+    
+    function handleTouchStart(e) {
+        // Prevent default to avoid scrolling when interacting with canvas elements
+        e.preventDefault();
+        
+        if (e.touches.length === 1) {
+            // Single touch - handle as drag/select
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseDown(mouseEvent);
+        } 
+        else if (e.touches.length === 2 && selectedImageIndex !== -1) {
+            // Two finger touch - prepare for pinch zoom on selected image
+            isDragging = false;
+            isResizing = true;
+            resizeDirection = 'se'; // Default to bottom-right resize for pinch
+            
+            // Store initial distance between the two touches
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            initialTouchDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            
+            // Store the initial scale of the selected image
+            const img = images[selectedImageIndex];
+            initialScale = img.scaleFactor;
+            
+            // Store initial width, height, and position
+            initialWidth = img.width * img.scaleFactor;
+            initialHeight = img.height * img.scaleFactor;
+            initialX = img.x;
+            initialY = img.y;
+        }
+    }
+    
+    function handleTouchMove(e) {
+        // Prevent default scrolling behavior
+        e.preventDefault();
+        
+        if (e.touches.length === 1 && (isDragging || isResizing)) {
+            // Single touch - handle as drag or single-finger resize
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            handleMouseMove(mouseEvent);
+        } 
+        else if (e.touches.length === 2 && isResizing && selectedImageIndex !== -1) {
+            // Handle pinch zoom for image resizing
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            
+            // Calculate current distance between touches
+            const currentDistance = Math.hypot(
+                touch2.clientX - touch1.clientX,
+                touch2.clientY - touch1.clientY
+            );
+            
+            // Calculate scale factor change based on pinch gesture
+            const scaleFactor = currentDistance / initialTouchDistance;
+            
+            // Apply the scaling to the selected image
+            const img = images[selectedImageIndex];
+            const aspectRatio = img.width / img.height;
+            
+            // Calculate new dimensions
+            let newWidth = Math.max(50, initialWidth * scaleFactor);
+            let newHeight = newWidth / aspectRatio;
+            
+            // Keep image centered during pinch zoom
+            const newX = initialX - (newWidth - initialWidth) / 2;
+            const newY = initialY - (newHeight - initialHeight) / 2;
+            
+            // Apply changes
+            img.scaleFactor = newWidth / img.width;
+            img.x = newX;
+            img.y = newY;
+            
+            // Update the scale slider
+            const scalePercent = Math.round(img.scaleFactor * 100);
+            imageScale.value = scalePercent;
+            imageScaleValue.textContent = `${scalePercent}%`;
+            
+            updateUI();
+        }
+    }
+    
+    function handleTouchEnd(e) {
+        if (isDragging || isResizing) {
+            isDragging = false;
+            isResizing = false;
+            initialTouchDistance = 0;
+            saveState();
+            updateUI();
+        }
+    }
+
+    // Define keyboard shortcuts
+    const SHORTCUTS = {
+        TOGGLE_THEME: { key: 'i', ctrl: true, description: 'Toggle dark/light theme' },
+        EXPORT_PNG: { key: 'e', description: 'Export as PNG' },
+        UNDO: { key: 'z', ctrl: true, description: 'Undo last action' },
+        REDO: { key: 'y', ctrl: true, description: 'Redo last action' },
+        DELETE: { key: 'Delete', description: 'Delete selected element' },
+        BRING_FRONT: { key: 'ArrowUp', ctrl: true, description: 'Bring to front' },
+        SEND_BACK: { key: 'ArrowDown', ctrl: true, description: 'Send to back' },
+        RESET_CANVAS: { key: 'r', ctrl: true, description: 'Reset canvas' },
+        TOGGLE_COLLISION: { key: 'c', description: 'Toggle collision detection' },
+        ADD_TEXT: { key: 'a', description: 'Add new text' },
+        ASPECT_1_1: { key: '1', ctrl: true, description: 'Set 1:1 aspect ratio' },
+        ASPECT_4_3: { key: '2', ctrl: true, description: 'Set 4:3 aspect ratio' },
+        ASPECT_16_9: { key: '3', ctrl: true, description: 'Set 16:9 aspect ratio' },
+        ASPECT_9_16: { key: '4', ctrl: true, description: 'Set 9:16 aspect ratio' }
+    };
+
+    // Handle keyboard shortcuts
+    function handleKeyboardShortcuts(e) {
+        // Don't trigger shortcuts when typing in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        // Check for keyboard shortcuts
+        const ctrlPressed = e.ctrlKey || e.metaKey; // Support for both Windows/Linux and Mac
+        
+        // Toggle theme with Cmd+I / Ctrl+I
+        if (ctrlPressed && e.key.toLowerCase() === SHORTCUTS.TOGGLE_THEME.key) {
+            e.preventDefault();
+            toggleDarkMode();
+        }
+        
+        // Export as PNG with 'E' key
+        else if (e.key.toLowerCase() === SHORTCUTS.EXPORT_PNG.key) {
+            e.preventDefault();
+            exportAsPNG();
+        }
+        
+        // Undo with Ctrl+Z / Cmd+Z
+        else if (ctrlPressed && e.key.toLowerCase() === SHORTCUTS.UNDO.key) {
+            e.preventDefault();
+            handleUndo();
+        }
+        
+        // Redo with Ctrl+Y / Cmd+Y
+        else if (ctrlPressed && e.key.toLowerCase() === SHORTCUTS.REDO.key) {
+            e.preventDefault();
+            handleRedo();
+        }
+        
+        // Delete selected element with Delete key
+        else if (e.key === SHORTCUTS.DELETE.key) {
+            if (selectedText) {
+                e.preventDefault();
+                deleteSelectedText();
+            } else if (selectedImage) {
+                e.preventDefault();
+                deleteSelectedImage();
+            }
+        }
+        
+        // Bring to front with Ctrl+Up / Cmd+Up
+        else if (ctrlPressed && e.key === SHORTCUTS.BRING_FRONT.key && selectedImage) {
+            e.preventDefault();
+            bringSelectedImageToFront();
+        }
+        
+        // Send to back with Ctrl+Down / Cmd+Down
+        else if (ctrlPressed && e.key === SHORTCUTS.SEND_BACK.key && selectedImage) {
+            e.preventDefault();
+            sendSelectedImageToBack();
+        }
+        
+        // Reset canvas with Ctrl+R / Cmd+R
+        else if (ctrlPressed && e.key.toLowerCase() === SHORTCUTS.RESET_CANVAS.key) {
+            e.preventDefault();
+            resetCanvas();
+        }
+        
+        // Toggle collision detection with 'C' key
+        else if (e.key.toLowerCase() === SHORTCUTS.TOGGLE_COLLISION.key) {
+            e.preventDefault();
+            toggleCollision();
+        }
+        
+        // Add new text with 'A' key
+        else if (e.key.toLowerCase() === SHORTCUTS.ADD_TEXT.key) {
+            e.preventDefault();
+            addNewText();
+        }
+        
+        // Set aspect ratio with Cmd+1 / Ctrl+1 (1:1 square)
+        else if (ctrlPressed && e.key === SHORTCUTS.ASPECT_1_1.key) {
+            e.preventDefault();
+            updateCanvasAspectRatio(1); // 1:1 ratio
+            
+            // Update aspect ratio selector if it exists
+            const aspectRatio = document.getElementById('aspect-ratio');
+            if (aspectRatio) aspectRatio.value = '1';
+        }
+        
+        // Set aspect ratio with Cmd+2 / Ctrl+2 (4:3)
+        else if (ctrlPressed && e.key === SHORTCUTS.ASPECT_4_3.key) {
+            e.preventDefault();
+            updateCanvasAspectRatio(4/3); // 4:3 ratio
+            
+            // Update aspect ratio selector if it exists
+            const aspectRatio = document.getElementById('aspect-ratio');
+            if (aspectRatio) aspectRatio.value = '1.33';
+        }
+        
+        // Set aspect ratio with Cmd+3 / Ctrl+3 (16:9)
+        else if (ctrlPressed && e.key === SHORTCUTS.ASPECT_16_9.key) {
+            e.preventDefault();
+            updateCanvasAspectRatio(16/9); // 16:9 ratio
+            
+            // Update aspect ratio selector if it exists
+            const aspectRatio = document.getElementById('aspect-ratio');
+            if (aspectRatio) aspectRatio.value = '1.78';
+        }
+        
+        // Set aspect ratio with Cmd+4 / Ctrl+4 (9:16 - vertical video)
+        else if (ctrlPressed && e.key === SHORTCUTS.ASPECT_9_16.key) {
+            e.preventDefault();
+            updateCanvasAspectRatio(9/16); // 9:16 ratio
+            
+            // Update aspect ratio selector if it exists
+            const aspectRatio = document.getElementById('aspect-ratio');
+            if (aspectRatio) aspectRatio.value = '0.56';
+        }
+    }
+
+    // Add keyboard shortcut event listener
+    window.addEventListener('keydown', handleKeyboardShortcuts);
+
+    // Function to display available shortcuts in a tooltip or modal
+    function showShortcutsHelp() {
+        const helpContent = document.createElement('div');
+        helpContent.className = 'shortcuts-help';
+        helpContent.innerHTML = `
+            <h2>Keyboard Shortcuts</h2>
+            <ul>
+                ${Object.values(SHORTCUTS).map(shortcut => {
+                    let keyDisplay = shortcut.key;
+                    if (shortcut.key === 'Delete') keyDisplay = 'Del';
+                    if (shortcut.key === 'ArrowUp') keyDisplay = '↑';
+                    if (shortcut.key === 'ArrowDown') keyDisplay = '↓';
+                    
+                    const modifierKey = shortcut.ctrl ? (navigator.platform.indexOf('Mac') > -1 ? '⌘' : 'Ctrl+') : '';
+                    return `<li><kbd>${modifierKey}${keyDisplay.toUpperCase()}</kbd> - ${shortcut.description}</li>`;
+                }).join('')}
+            </ul>
+        `;
+        
+        // Show the help content in a modal
+        const modal = document.createElement('div');
+        modal.className = 'modal shortcuts-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                ${helpContent.outerHTML}
+                <button id="close-shortcuts-help" class="close-btn">Close</button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close modal when clicking the close button
+        document.getElementById('close-shortcuts-help').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
+    // Add a "?" button to show keyboard shortcuts
+    document.addEventListener('DOMContentLoaded', () => {
+        const toolbar = document.querySelector('.toolbar');
+        if (toolbar) {
+            const shortcutsBtn = document.createElement('button');
+            shortcutsBtn.innerHTML = '<i class="fas fa-keyboard"></i> Shortcuts';
+            shortcutsBtn.title = 'Show keyboard shortcuts';
+            shortcutsBtn.addEventListener('click', showShortcutsHelp);
+            
+            // Add to the first toolbar group or create one
+            let toolbarGroup = toolbar.querySelector('.toolbar-group');
+            if (!toolbarGroup) {
+                toolbarGroup = document.createElement('div');
+                toolbarGroup.className = 'toolbar-group';
+                toolbar.appendChild(toolbarGroup);
+            }
+            
+            toolbarGroup.appendChild(shortcutsBtn);
+        }
+    });
+
+    // Import keyboard shortcuts module
+    const keyboardScript = document.createElement('script');
+    keyboardScript.src = 'keyboard-shortcuts.js';
+    document.head.appendChild(keyboardScript);
 });
