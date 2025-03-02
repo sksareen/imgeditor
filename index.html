@@ -10,7 +10,10 @@
 </head>
 <body class="dark-mode">
     <div class="container">
-        <h1>Meme Generator</h1>
+        <div class="app-header">
+            <h1>Meme Generator</h1>
+            <div class="app-version">v1.2.4</div>
+        </div>
         
         <div class="toolbar">
             <div class="toolbar-group">
@@ -37,22 +40,24 @@
         </div>
         
         <div class="side-panel">
-          
             <div class="edit-panel">
                 <div class="canvas-container">
-            
-            <div id="editor-canvas">
-                <div class="drop-zone">
+                    <div id="editor-canvas">
+                        <div class="drop-zone">
                             <i class="fas fa-image"></i>
                             <div id="drop-message">Upload image or choose a template</div>
                         </div>
                     </div>
+                    <div class="canvas-info">
+                        <span id="canvas-dimensions">600 x 600</span>
+                        <!-- <span id="collision-status" class="active">Collision: ON</span> -->
+                    </div>
                 </div>
-            
             </div>
 
             <div class="image-panel">
                 <div class="control-panel" id="text-controls" style="display: none;">
+                    <div class="panel-header">Text Settings</div>
                     <div class="quick-settings">
                         <button id="position-top" title="Position Top"><i class="fas fa-arrow-up"></i> Top</button>
                         <button id="position-bottom" title="Position Bottom"><i class="fas fa-arrow-down"></i> Bottom</button>
@@ -78,10 +83,11 @@
                     </div>
                 </div>
                 <div class="control-panel" id="image-controls" style="display: none;">
+                    <div class="panel-header">Image Settings</div>
                     <div class="quick-settings">
                         <button id="delete-image-btn" title="Delete Selected Image"><i class="fas fa-trash"></i> Delete</button>
-                        <button id="bring-front-btn" title="Bring to Front"><i class="fas fa-layer-group"></i> Bring to Front</button>
-                        <button id="send-back-btn" title="Send to Back"><i class="fas fa-layer-group fa-flip-vertical"></i> Send to Back</button>
+                        <button id="bring-front-btn" title="Bring to Front"><i class="fas fa-layer-group"></i> Front</button>
+                        <button id="send-back-btn" title="Send to Back"><i class="fas fa-layer-group fa-flip-vertical"></i> Back</button>
                     </div>
                     
                     <div class="control-row">
@@ -104,6 +110,20 @@
                 </div>
             </div>
         </div>
+        
+        <footer class="app-footer">
+            <div class="footer-content">
+                <div class="footer-links">
+                    <a href="#" title="About">About</a>
+                    <a href="#" title="Privacy Policy">Privacy</a>
+                    <a href="#" title="Terms of Use">Terms</a>
+                    <a href="#" title="Contact Us">Contact</a>
+                </div>
+                <div class="copyright">
+                    © <span id="copyright-year">2025</span> Meme Generator. All rights reserved.
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
