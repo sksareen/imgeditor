@@ -3,71 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meme Generator</title>
+    <title>Image Editor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&display=swap">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body class="dark-mode">
     <div class="container">
-        <div class="app-header">
-            <h1>Meme Generator</h1>
-            <div class="app-version">v1.2.4</div>
-        </div>
+        <header class="app-header">
+            <h1 class="app-title">Image Editor</h1>
+            <div class="app-version">v1.0.0</div>
+        </header>
         
         <div class="toolbar">
             <div class="toolbar-group">
-                <button id="add-text-btn" title="Add Text"><i class="fas fa-font"></i> Add Text</button>
-                <button id="undo-btn" disabled title="Undo"><i class="fas fa-undo"></i></button>
-                <button id="redo-btn" disabled title="Redo"><i class="fas fa-redo"></i></button>
+                <button id="add-text-btn" class="btn" title="Add Text"><i class="fas fa-font"></i> Add Text</button>
+                <button id="undo-btn" class="btn btn-icon" disabled title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                <button id="redo-btn" class="btn btn-icon" disabled title="Redo (Ctrl+Shift+Z)"><i class="fas fa-redo"></i></button>
             </div>
             
             <div class="toolbar-group">
-                <button id="reset-btn" title="Reset Canvas"><i class="fas fa-trash-alt"></i> Reset</button>
-                <button id="auto-size-btn" title="Auto Arrange Images"><i class="fas fa-th"></i> Optimal Arrangement</button>
-                <div class="aspect-ratio-toggles">
-                    <button id="aspect-1-1" class="aspect-toggle active" data-ratio="1:1" title="1:1 Square">1:1</button>
-                    <button id="aspect-16-9" class="aspect-toggle" data-ratio="16:9" title="16:9 Landscape">16:9</button>
-                    <button id="aspect-4-3" class="aspect-toggle" data-ratio="4:3" title="4:3 Landscape">4:3</button>
-                    <button id="aspect-9-16" class="aspect-toggle" data-ratio="9:16" title="9:16 Portrait">9:16</button>
-                </div>
+                <button id="reset-btn" class="btn" title="Reset Canvas"><i class="fas fa-trash-alt"></i> Reset</button>
             </div>
             
             <div class="toolbar-group">
-                <button id="dark-mode-toggle" title="Toggle Dark Mode (Cmd+I or Ctrl+I)"><i class="fas fa-moon"></i></button>
-                <button id="export-btn" title="Download Meme"><i class="fas fa-download"></i> Download</button>
+                <button id="dark-mode-toggle" class="btn btn-icon" title="Toggle Dark Mode (Ctrl+I)"><i class="fas fa-moon"></i></button>
+                <button id="copy-clipboard-btn" class="btn" title="Copy to Clipboard (Ctrl+Shift+C)"><i class="fas fa-clipboard"></i> Copy</button>
+                <button id="export-btn" class="btn btn-primary" title="Export Image (Ctrl+S)"><i class="fas fa-download"></i> Export</button>
+                <button id="command-palette-btn" class="btn btn-icon" title="Command Palette (Ctrl+K)"><i class="fas fa-terminal"></i></button>
             </div>
         </div>
-        <!-- dfd -->
-        <div class="side-panel">
-            <div class="edit-panel">
+        
+        <div class="main-content">
+            <div class="editor-area">
                 <div class="canvas-container">
                     <div id="editor-canvas">
                         <div class="drop-zone">
                             <i class="fas fa-image"></i>
-                            <div id="drop-message">Upload image or choose a template</div>
+                            <div id="drop-message">Drag and drop your image here to get started</div>
                         </div>
                     </div>
                     <div class="canvas-info">
                         <span id="canvas-dimensions">600 x 600</span>
-                        <!-- <span id="collision-status" class="active">Collision: ON</span> -->
                     </div>
                 </div>
             </div>
 
-            <div class="image-panel">
-                <div class="control-panel" id="text-controls" style="display: none;">
+            <div class="sidebar">
+                <div class="panel" id="text-controls" style="display: none;">
                     <div class="panel-header">Text Settings</div>
                     <div class="quick-settings">
-                        <button id="position-top" title="Position Top"><i class="fas fa-arrow-up"></i> Top</button>
-                        <button id="position-bottom" title="Position Bottom"><i class="fas fa-arrow-down"></i> Bottom</button>
-                        <button id="delete-text-btn" title="Delete Selected Text"><i class="fas fa-trash"></i> Delete</button>
+                        <button id="position-top" class="btn" title="Position Top"><i class="fas fa-arrow-up"></i> Top</button>
+                        <button id="position-bottom" class="btn" title="Position Bottom"><i class="fas fa-arrow-down"></i> Bottom</button>
+                        <button id="delete-text-btn" class="btn btn-danger" title="Delete Selected Text"><i class="fas fa-trash"></i> Delete</button>
                     </div>
                     
                     <div class="control-row">
                         <div class="control-group">
                             <label for="text-input">Text</label>
-                            <textarea id="text-input" rows="2" placeholder="Enter your meme text here"></textarea>
+                            <textarea id="text-input" rows="2" placeholder="Enter your text here"></textarea>
                         </div>
                     </div>
                     
@@ -82,12 +76,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="control-panel" id="image-controls" style="display: none;">
+                
+                <div class="panel" id="image-controls" style="display: none;">
                     <div class="panel-header">Image Settings</div>
                     <div class="quick-settings">
-                        <button id="delete-image-btn" title="Delete Selected Image"><i class="fas fa-trash"></i> Delete</button>
-                        <button id="bring-front-btn" title="Bring to Front"><i class="fas fa-layer-group"></i> Front</button>
-                        <button id="send-back-btn" title="Send to Back"><i class="fas fa-layer-group fa-flip-vertical"></i> Back</button>
+                        <button id="delete-image-btn" class="btn btn-danger" title="Delete Selected Image"><i class="fas fa-trash"></i> Delete</button>
+                        <button id="bring-front-btn" class="btn" title="Bring to Front"><i class="fas fa-layer-group"></i> Front</button>
+                        <button id="send-back-btn" class="btn" title="Send to Back"><i class="fas fa-layer-group fa-flip-vertical"></i> Back</button>
                     </div>
                     
                     <div class="control-row">
@@ -96,17 +91,48 @@
                             <input type="range" id="image-scale" min="10" max="200" value="100">
                         </div>
                     </div>
+                    
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label for="image-rotation">Rotation: <span id="image-rotation-value">0°</span></label>
+                            <input type="range" id="image-rotation" min="0" max="360" value="0">
+                        </div>
+                    </div>
+                    
+                    <div class="control-row">
+                        <div class="control-group checkbox-group">
+                            <input type="checkbox" id="keep-aspect-ratio" checked>
+                            <label for="keep-aspect-ratio">Keep Aspect Ratio</label>
+                        </div>
+                        <div class="control-group">
+                            <button id="reset-transform-btn" class="btn btn-sm" title="Reset Transformations"><i class="fas fa-undo"></i> Reset</button>
+                        </div>
+                    </div>
+                    
+                    <div id="crop-controls" class="crop-controls" style="display: none;">
+                        <div class="control-row">
+                            <button id="apply-crop-btn" class="btn btn-primary"><i class="fas fa-check"></i> Apply Crop</button>
+                            <button id="cancel-crop-btn" class="btn"><i class="fas fa-times"></i> Cancel</button>
+                        </div>
+                        <div class="control-row">
+                            <div class="control-group">
+                                <label>Drag handles to adjust crop area</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="template-title">Add Image</div>
                 
-                <div class="upload-btn-wrapper">
-                    <button class="btn upload-btn"><i class="fas fa-upload"></i> Upload Image</button>
-                    <input type="file" id="upload-image" accept="image/*" title="Upload Image" />
-                </div>
-                
-                <div class="template-title">Templates</div>
-                <div class="templates-grid" id="templates-container">
-                    <!-- Template images will be loaded here -->
+                <div class="panel">
+                    <div class="panel-header">Add Images</div>
+                    <div class="upload-btn-wrapper">
+                        <button class="btn upload-btn"><i class="fas fa-upload"></i> Upload Image</button>
+                        <input type="file" id="upload-image" accept="image/*" title="Upload Image" />
+                    </div>
+                    
+                    <div class="templates-title">Templates</div>
+                    <div class="templates-grid" id="templates-container">
+                        <!-- Template images will be loaded here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -120,13 +146,13 @@
                     <a href="#" title="Contact Us">Contact</a>
                 </div>
                 <div class="copyright">
-                    © <span id="copyright-year">2025</span> Meme Generator. All rights reserved.
+                    © <span id="copyright-year">2023</span> Image Editor. All rights reserved.
                 </div>
             </div>
         </footer>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

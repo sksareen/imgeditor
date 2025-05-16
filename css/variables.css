@@ -1,0 +1,66 @@
+/* CSS Variables for theming */
+:root {
+  /* Light theme (default) */
+  --color-background: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-variant: #eaeaea;
+  --color-primary: #2563eb;
+  --color-secondary: #4f46e5;
+  --color-accent: #e11d48;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #9ca3af;
+  --color-border: #e5e7eb;
+  --color-divider: #f3f4f6;
+  --color-error: #ef4444;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+  
+  /* UI variables */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Animation */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* Layout */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --header-height: 60px;
+  --footer-height: 50px;
+  --toolbar-height: 48px;
+  
+  /* Canvas */
+  --canvas-border-color: var(--color-border);
+  --canvas-background: #ffffff;
+}
+
+/* Dark theme variables - applied when .dark-mode class is present on body */
+.dark-mode {
+  --color-background: #121212;
+  --color-surface: #1e1e1e;
+  --color-surface-variant: #2c2c2c;
+  --color-primary: #3b82f6;
+  --color-secondary: #6366f1;
+  --color-accent: #f43f5e;
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #e5e7eb;
+  --color-text-tertiary: #9ca3af;
+  --color-border: #333333;
+  --color-divider: #2e2e2e;
+  
+  /* Canvas colors for dark mode */
+  --canvas-border-color: #444444;
+  --canvas-background: #2c2c2c;
+} 

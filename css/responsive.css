@@ -1,0 +1,141 @@
+/* Responsive styles */
+
+/* Small desktop and tablets in landscape */
+@media (max-width: 1200px) {
+  .container {
+    padding: var(--spacing-md);
+  }
+  
+  .main-content {
+    gap: var(--spacing-md);
+  }
+  
+  .sidebar {
+    width: 280px;
+  }
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+  .container {
+    padding: var(--spacing-sm);
+  }
+  
+  .main-content {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+  }
+  
+  .app-header {
+    height: auto;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .app-title {
+    font-size: 24px;
+  }
+  
+  #editor-canvas {
+    height: 500px;
+  }
+}
+
+/* Mobile devices */
+@media (max-width: 480px) {
+  .container {
+    padding: var(--spacing-xs);
+  }
+  
+  .toolbar {
+    padding: var(--spacing-xs);
+  }
+  
+  .app-title {
+    font-size: 20px;
+  }
+  
+  .app-version {
+    position: static;
+    transform: none;
+    margin-left: var(--spacing-sm);
+    font-size: 10px;
+  }
+  
+  #editor-canvas {
+    height: 400px;
+  }
+  
+  .quick-settings button {
+    padding: var(--spacing-xs);
+    font-size: 12px;
+  }
+  
+  .templates-grid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  }
+  
+  .command-palette {
+    top: 20%;
+    width: 90vw;
+  }
+  
+  .command-palette-results {
+    max-height: 250px;
+  }
+  
+  .crop-handle {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .crop-handle.nw { top: -6px; left: -6px; }
+  .crop-handle.n { top: -6px; left: calc(50% - 6px); }
+  .crop-handle.ne { top: -6px; right: -6px; }
+  .crop-handle.e { top: calc(50% - 6px); right: -6px; }
+  .crop-handle.se { bottom: -6px; right: -6px; }
+  .crop-handle.s { bottom: -6px; left: calc(50% - 6px); }
+  .crop-handle.sw { bottom: -6px; left: -6px; }
+  .crop-handle.w { top: calc(50% - 6px); left: -6px; }
+  
+  .crop-controls .control-row {
+    flex-direction: row;
+    gap: var(--spacing-xs);
+  }
+  
+  .crop-controls button {
+    flex: 1;
+    font-size: 12px;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 320px) {
+  .app-title {
+    font-size: 18px;
+  }
+  
+  #editor-canvas {
+    height: 320px;
+  }
+  
+  .panel {
+    padding: var(--spacing-xs);
+  }
+  
+  .crop-handle {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .crop-handle.nw { top: -5px; left: -5px; }
+  .crop-handle.n { top: -5px; left: calc(50% - 5px); }
+  .crop-handle.ne { top: -5px; right: -5px; }
+  .crop-handle.e { top: calc(50% - 5px); right: -5px; }
+  .crop-handle.se { bottom: -5px; right: -5px; }
+  .crop-handle.s { bottom: -5px; left: calc(50% - 5px); }
+  .crop-handle.sw { bottom: -5px; left: -5px; }
+  .crop-handle.w { top: calc(50% - 5px); left: -5px; }
+} 

@@ -1,0 +1,28 @@
+/* Dark mode overrides */
+/* These styles complement the variables in variables.css */
+
+body.dark-mode {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.dark-mode .btn:not(.btn-primary):not(.btn-danger) {
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.dark-mode .btn:not(.btn-primary):not(.btn-danger):hover {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.dark-mode .resize-handle {
+  border-color: var(--color-text-primary);
+}
+
+.dark-mode .command-palette-key {
+  background-color: #252525;
+  color: var(--color-text-secondary);
+} 

@@ -1,0 +1,57 @@
+/* Main CSS file for Image Editor */
+@import 'reset.css';
+@import 'variables.css';
+@import 'layout.css';
+@import 'toolbar.css';
+@import 'canvas.css';
+@import 'panels.css';
+@import 'components.css';
+@import 'dark-mode.css';
+@import 'responsive.css';
+
+/* Utility classes */
+.hidden {
+  display: none !important;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.align-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.wrap {
+  flex-wrap: wrap;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+
+.gap-md {
+  gap: 16px;
+}
+
+.gap-lg {
+  gap: 24px;
+} 
